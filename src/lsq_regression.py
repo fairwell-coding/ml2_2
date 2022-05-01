@@ -51,7 +51,8 @@ def task12():
     sigma = 2
 
     # 4. Create training data
-    X, y = __create_data(200, d, sigma)
+    num_training_samples = 200
+    X, y = __create_data(num_training_samples, d, sigma)
 
     # 4. Create test data
     X_t, y_t = __create_data(50, d, sigma)
@@ -61,7 +62,15 @@ def task12():
     V, _ = __create_data(num_random_features, d, sigma)
 
     # 6. Implement w*
-    theta = 1 / np.sqrt(num_random_features) * (np.max())
+    theta = 1 / np.sqrt(num_random_features) * (np.maximum(X @ V.T, 0))
+    I = np.diag(np.ones(num_random_features))
+    lambda_ = 1e-8  # lambda value to reproduce double desecent phenomenon
+
+    R = lambda_ * I + theta.T @ theta
+    z = theta.T @ y
+    w = np.linalg.inv(R) @ z  # analytical computation
+
+    w_ml = np.linalg.solve(R, z)  # computation via QR decomposition
 
     """ End of your code
     """
