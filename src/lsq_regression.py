@@ -62,6 +62,8 @@ def task12():
     # V, _ = __create_data(num_random_features, d, sigma)
 
     feature_vectors = __create_feature_vectors(d)
+    train_losses = []
+    test_losses = []
 
     for V in feature_vectors:
         I = np.diag(np.ones(V.shape[0]))
@@ -70,14 +72,19 @@ def task12():
         # 1.6: Implement w* and calculate MSE
         theta = __calculate_theta(V, X)
         theta_t = __calculate_theta(V, X_t)
-        R = lambda_ * I + theta.T @ theta
-        z = theta.T @ y
+        # R = lambda_ * I + theta.T @ theta
+        # z = theta.T @ y
 
-        # w = np.linalg.inv(R) @ z  # analytical computation
+        A = lambda_ * I + theta.T @ theta
+        Q, R = np.linalg.qr(A)
+        z = Q.T @ theta.T @ y.reshape((N, 1))
+        w_analytical = np.linalg.inv(A) @ theta.T @ y
 
         # 1.7: Reproduce double descent phenomenon
         w_ml = np.linalg.solve(R, z)  # computation via QR decomposition
         mse_train, mse_test = __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t)
+        train_losses.append(mse_train)
+        test_losses.append(mse_test)
 
     """ End of your code
     """
