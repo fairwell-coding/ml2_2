@@ -50,27 +50,34 @@ def task12():
     d = 5
     sigma = 2
 
-    # 4. Create training data
-    num_training_samples = 200
-    X, y = __create_data(num_training_samples, d, sigma)
+    # 1.4: Create training data
+    N = 200
+    X, y = __create_data(N, d, sigma)
 
-    # 4. Create test data
+    # 1.4: Create test data
     X_t, y_t = __create_data(50, d, sigma)
 
-    # 5. Create random features
-    num_random_features = 50
-    V, _ = __create_data(num_random_features, d, sigma)
+    # 1.5: Create random features
+    # num_random_features = 50
+    # V, _ = __create_data(num_random_features, d, sigma)
 
-    # 6. Implement w*
-    theta = 1 / np.sqrt(num_random_features) * (np.maximum(X @ V.T, 0))
-    I = np.diag(np.ones(num_random_features))
-    lambda_ = 1e-8  # lambda value to reproduce double desecent phenomenon
+    feature_vectors = __create_feature_vectors(d)
 
-    R = lambda_ * I + theta.T @ theta
-    z = theta.T @ y
-    w = np.linalg.inv(R) @ z  # analytical computation
+    for V in feature_vectors:
+        I = np.diag(np.ones(V.shape[0]))
+        lambda_ = 1e-8  # lambda value to reproduce double desecent phenomenon
 
-    w_ml = np.linalg.solve(R, z)  # computation via QR decomposition
+        # 1.6: Implement w* and calculate MSE
+        theta = __calculate_theta(V, X)
+        theta_t = __calculate_theta(V, X_t)
+        R = lambda_ * I + theta.T @ theta
+        z = theta.T @ y
+
+        # w = np.linalg.inv(R) @ z  # analytical computation
+
+        # 1.7: Reproduce double descent phenomenon
+        w_ml = np.linalg.solve(R, z)  # computation via QR decomposition
+        mse_train, mse_test = __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t)
 
     """ End of your code
     """
@@ -84,6 +91,30 @@ def task12():
         a.set_title('#Features M=%i, MAE=%f' %(m_array[m_idx],(mae_array[m_idx])))
 
     return fig1, fig2
+
+
+def __calculate_theta(V, X):
+    return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0))
+
+
+def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
+    y_hat_train = theta @ w_ml
+    y_hat_test = theta_t @ w_ml
+    mse_train = 1 / N * np.sum((y - y_hat_train) ** 2)  # equation (4)
+    mse_test = 1 / N * np.sum((y_t - y_hat_test) ** 2)  # equation (4)
+
+    return mse_train, mse_test
+
+
+def __create_feature_vectors(d):
+    feature_vectors = []
+
+    for k in range(61):
+        N = 10*k + 1
+        data_points = np.random.rand(N, d)
+        feature_vectors.append(data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1)))
+
+    return feature_vectors
 
 
 def __create_data(N, d, sigma):
