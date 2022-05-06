@@ -32,7 +32,7 @@ def task12():
     fig1, ax1 = plt.subplots(1, 3, figsize=(17, 5))
     plt.suptitle('Task 1 - Regularized Least Squares and Double Descent Phenomenon', fontsize=16)
     for a in ax1.reshape(-1):
-        #a.set_ylim([0,40])
+        # a.set_ylim([0,40])
         a.set_ylabel('error')
         a.set_xlabel('number of random features')
 
@@ -61,21 +61,19 @@ def task12():
     # num_random_features = 50
     # V, _ = __create_data(num_random_features, d, sigma)
 
-    feature_vectors = __create_feature_vectors(d)
-    train_losses = np.zeros((3, 61))
-    test_losses =  np.zeros((3, 61))
+    train_losses = np.zeros((3, 61, 5))
+    test_losses =  np.zeros((3, 61, 5))
 
-    feature_index = 0
-    for r in range(5): # experiments
-        feature_vectors = __create_feature_vectors(d)
-        for l in range(3): # loop over lambdas
-            for v in range(0, 61): # loop over feature vectors
-                V = feature_vectors[v]
+    for l in range(3): # loop over lambdas
+        for v in range(0, 61): # loop over feature vectors
+            for r in range(5): # experiments
+                V = __create_feature_vectors(v, d)
+                # V = feature_vectors[v]
                 I = np.diag(np.ones(V.shape[0]))
                 lambda_ = lams[l]  # lambda value to reproduce double desecent phenomenon
 
                 # 1.6: Implement w* and calculate MSE
-                theta = __calculate_theta(V, X) #np.moveaxis(THETA, 1, 0) = THETA.T
+                theta = __calculate_theta(V, X)
                 theta_t = __calculate_theta(V, X_t)
                 # R = lambda_ * I + theta.T @ theta
                 # z = theta.T @ y
@@ -90,8 +88,8 @@ def task12():
                 mse_train, mse_test = __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t)
 
                 # maybe still some scaling problems
-                train_losses[l, v] += mse_train/d #average mse
-                test_losses[l, v] += mse_test/d
+                train_losses[l, v, r] = mse_train #average mse
+                test_losses[l, v, r] = mse_test
 
     """ End of your code
     """
@@ -99,9 +97,11 @@ def task12():
 
     
     features = range(61)
+    train_mean = np.mean(train_losses, axis=2)
+    test_mean = np.mean(test_losses,  axis=2)
     for lam_idx, a in enumerate(ax1.reshape(-1)):
-        a.plot(features, train_losses[lam_idx, :], label='train')
-        a.plot(features, test_losses[lam_idx, :], label='test')
+        a.plot(features, train_mean[lam_idx, :], label='train')
+        a.plot(features, test_mean[lam_idx, :], label='test')
         a.legend()
         a.set_title(r'$\lambda=$'+str(lams[lam_idx]))
 
@@ -118,7 +118,9 @@ def __calculate_theta(V, X):
         v = V[:, r].reshape(V.shape[0], 1)
         x = X[:, r].reshape(X.shape[0], 1)
         theta[:, :, r] = 1 / np.sqrt(v.shape[0]) * (x @ v.T) 
+
     return  (np.maximum(np.amax(theta, axis=2), 0)) # loog for max in each dimension d = 5
+    # return  (np.maximum(X @ V.T, 0)) # loog for max in each dimension d = 5
 
 
 def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
@@ -130,15 +132,13 @@ def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
     return mse_train, mse_test
 
 
-def __create_feature_vectors(d):
+def __create_feature_vectors(k, d):
     feature_vectors = []
+    N = 10*k + 1
+    data_points = np.random.rand(N, d)
+        # feature_vectors.append(data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1)))
 
-    for k in range(61):
-        N = 10*k + 1
-        data_points = np.random.rand(N, d)
-        feature_vectors.append(data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1)))
-
-    return feature_vectors
+    return data_points
 
 
 def __create_data(N, d, sigma):
