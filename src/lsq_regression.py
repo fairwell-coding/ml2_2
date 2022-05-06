@@ -72,7 +72,7 @@ def task12():
                 I = np.diag(np.ones(V.shape[0]))
                 lambda_ = lams[l]  # lambda value to reproduce double desecent phenomenon
 
-                # 1.6: Implement w* and calculate MSE
+                # 1.6: Implement w* and calculate MSEy
                 theta = __calculate_theta(V, X)
                 theta_t = __calculate_theta(V, X_t)
                 # R = lambda_ * I + theta.T @ theta
@@ -124,8 +124,8 @@ def __calculate_theta(V, X):
 def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
     y_hat_train = theta @ w_ml
     y_hat_test = theta_t @ w_ml
-    mse_train = 1 / N * np.sum((y - y_hat_train) ** 2)  # equation (4)
-    mse_test = 1 / N * np.sum((y_t - y_hat_test) ** 2)  # equation (4)
+    mse_train = 1 / y_hat_train.shape[0] * np.sum((y - y_hat_train) ** 2)  # equation (4)
+    mse_test = 1 / y_hat_test.shape[0] * np.sum((y_t - y_hat_test) ** 2)  # equation (4)
 
     return mse_train, mse_test
 
