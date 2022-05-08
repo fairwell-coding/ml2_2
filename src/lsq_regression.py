@@ -33,7 +33,7 @@ def task12():
     fig1, ax1 = plt.subplots(1, 3, figsize=(17, 5))
     plt.suptitle('Task 1 - Regularized Least Squares and Double Descent Phenomenon', fontsize=16)
     for a in ax1.reshape(-1):
-        #a.set_ylim([0,40])
+        a.set_ylim([0,40])
         a.set_ylabel('error')
         a.set_xlabel('number of random features')
 
@@ -145,17 +145,15 @@ def __calculate_alpha(kernel, lambda_, y_train):
     return alpha
 
 def __calculate_theta(V, X):
-    # theta = np.zeros((X.shape[0], V.shape[0], X.shape[1])) #  N x M x d -> example: 200 x 11 x 5 
+    # theta = np.zeros((X.shape[0], V.shape[0], X.shape[1])) #  N x M x d -> example: 200 x 11 x 5  -> 200 x 11 x 1
     # for r in range(X.shape[1]):
     #     v = V[:, r].reshape(V.shape[0], 1)
     #     x = X[:, r].reshape(X.shape[0], 1)
     #     theta[:, :, r] = (x @ v.T) 
 
-    # return  1 / np.sqrt(V.shape[0])* (np.maximum(np.amax(theta, axis=2), 0)) # loog for max in each dimension d = 5
+    # return  1 / np.sqrt(V.shape[0]) * (np.maximum(np.amax(theta, axis=2), 0)) # loog for max in each dimension d = 5
     return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0)) # loog for max in each dimension d = 5
 
-# def __calculate_theta(V, X):
-#     return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0))
 
 def __perform_linear_regression_kernel(N, lambda_, alpha, kernel1, kernel2, y, y_t):
     y_hat_train = -1/lambda_ * kernel1 @ alpha
@@ -175,14 +173,14 @@ def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
 
 def __create_feature_vectors(k, d):
     N = 10 * k + 1
-    data_points = np.random.random((N, d)) #np.random.rand <- uniform
+    data_points = np.random.normal(size=(N, d)) #np.random.rand <- uniform
     return data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1))
 
 
 def __create_data(N, d, sigma):
-    X = np.random.uniform(size=(N, d)) 
-    X /= np.linalg.norm(X, axis=1, ord=2).reshape((N, 1))
-    y = 1 / ((1 / 4 + (X @ np.ones(d)) ** 2)) + np.random.normal(np.zeros((N,)), sigma ** 2)
+    X = np.random.normal(size=(N, d)) 
+    X = X / np.linalg.norm(X, axis=1).reshape((N, 1))
+    y = 1 / ((1 / 4 + (X @ np.ones(d)) ** 2)) + np.random.normal(np.zeros((N)), sigma ** 2)
 
     return X, y
 
