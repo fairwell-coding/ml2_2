@@ -152,7 +152,7 @@ def __calculate_theta(V, X):
     #     theta[:, :, r] = (x @ v.T) 
 
     # return  1 / np.sqrt(V.shape[0])* (np.maximum(np.amax(theta, axis=2), 0)) # loog for max in each dimension d = 5
-    return  1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0)) # loog for max in each dimension d = 5
+    return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0)) # loog for max in each dimension d = 5
 
 # def __calculate_theta(V, X):
 #     return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0))
@@ -176,7 +176,7 @@ def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
 def __create_feature_vectors(k, d):
     N = 10 * k + 1
     data_points = np.random.random((N, d)) #np.random.rand <- uniform
-    return data_points / np.linalg.norm(data_points, axis=1 ord=2).reshape((N, 1))
+    return data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1))
 
 
 def __create_data(N, d, sigma):
