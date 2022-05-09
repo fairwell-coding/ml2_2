@@ -31,9 +31,15 @@ def task12():
     """
 
     fig1, ax1 = plt.subplots(1, 3, figsize=(17, 5))
-    plt.suptitle('Task 1 - Regularized Least Squares and Double Descent Phenomenon', fontsize=16)
+    plt.suptitle('Task 1 - Regularized Least Squares and Double Descent Phenomenon (without ylim)', fontsize=16)
     for a in ax1.reshape(-1):
-        a.set_ylim([0,40])
+        a.set_ylabel('error')
+        a.set_xlabel('number of random features')
+
+    fig1b, ax1b = plt.subplots(1, 3, figsize=(17, 5))
+    plt.suptitle('Task 1 - Regularized Least Squares and Double Descent Phenomenon (using ylim)', fontsize=16)
+    for a in ax1b.reshape(-1):
+        a.set_ylim([0, 40])
         a.set_ylabel('error')
         a.set_xlabel('number of random features')
 
@@ -58,24 +64,56 @@ def task12():
     # 1.4: Create test data
     X_t, y_t = __create_data(50, d, sigma)
 
-    # 1.5: Create random features
-    # num_random_features = 50
-    # V, _ = __create_data(num_random_features, d, sigma)
+    test_losses, train_losses = __task_1(lams, N, d, X, y, X_t, y_t)
+    kernels, thetas, MAEs = __task_2(lams[0], N, d, X, y, X_t, y_t)
 
+    """ End of your code
+    """
+
+    features = []
+    [features.append(10 * k + 1) for k in range(61)]
+
+    train_mean = np.mean(train_losses, axis=2)
+    test_mean = np.mean(test_losses, axis=2)
+    train_std = np.std(train_losses, axis=2)
+    test_std = np.std(test_losses, axis=2)
+
+    # task 1: without ylim
+    for lam_idx, a in enumerate(ax1.reshape(-1)):
+        a.plot(features, train_mean[lam_idx, :], label='train')
+        a.fill_between(features, train_mean[lam_idx, :] - train_std[lam_idx, :], train_mean[lam_idx, :] + train_std[lam_idx, :], alpha=0.5)
+
+        a.plot(features, test_mean[lam_idx, :], label='test')
+        a.fill_between(features, test_mean[lam_idx, :] - test_std[lam_idx, :], test_mean[lam_idx, :] + test_std[lam_idx, :], alpha=0.5)
+
+        a.legend()
+        a.set_title(r'$\lambda=$' + str(lams[lam_idx]))
+
+    # task 1: with ylim
+    for lam_idx, a in enumerate(ax1b.reshape(-1)):
+        a.plot(features, train_mean[lam_idx, :], label='train')
+        a.fill_between(features, train_mean[lam_idx, :] - train_std[lam_idx, :], train_mean[lam_idx, :] + train_std[lam_idx, :], alpha=0.5)
+
+        a.plot(features, test_mean[lam_idx, :], label='test')
+        a.fill_between(features, test_mean[lam_idx, :] - test_std[lam_idx, :], test_mean[lam_idx, :] + test_std[lam_idx, :], alpha=0.5)
+
+        a.legend()
+        a.set_title(r'$\lambda=$' + str(lams[lam_idx]))
+
+    # task 2
+    for m_idx, a in enumerate(ax2.reshape(-1)):
+        a.legend()
+        a.set_title('#Features M=%i, MAE=%f' % (m_array[m_idx], (MAEs[m_idx])))
+        x_axis = range(len(kernels[m_idx][9, :]))
+        a.plot(x_axis, kernels[m_idx][9, :])
+        a.plot(x_axis, thetas[m_idx][9, :])
+
+    return fig1, fig1b, fig2
+
+
+def __task_1(lams, N, d, X, y, X_t, y_t):
     train_losses = np.zeros((3, 61, 5))
     test_losses = np.zeros((3, 61, 5))
-    train_losses_k = np.zeros((3, 1))
-    test_losses_k = np.zeros((3, 1))
-    V = __create_feature_vectors_k(200, 5)
-    kernel_train = __calculate_kernel(X=X, X_prime=X)
-    V = __create_feature_vectors_k(200, 5)
-    kernel_test = __calculate_kernel(X=X_t, X_prime=V)
-    alpha = __calculate_alpha(kernel_train, lams[2], y)
-
-    mse_train, mse_test = __perform_linear_regression_kernel(N, lams[2], alpha, kernel_train, kernel_test, y, y_t)
-
-    print("MSE for training: " + str(mse_train))
-    print("MSE for test: " + str(mse_test))
 
     for l in range(3):  # loop over lambdas
         print(str.format("Calculating lambda {0}", lams[l]))
@@ -83,7 +121,6 @@ def task12():
         for v in range(0, 61):  # loop over feature vectors
             for r in range(5):  # experiments
                 V = __create_feature_vectors(v, d)
-                # V = feature_vectors[v]
                 I = np.diag(np.ones(V.shape[0]))
 
                 # 1.6: Implement w* and calculate MSEy
@@ -101,68 +138,81 @@ def task12():
                 # w_ml = w_analytical_1
                 mse_train, mse_test = __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t)
                 train_losses[l, v, r] = mse_train  # average mse
-                test_losses[l, v, r] = mse_test             
+                test_losses[l, v, r] = mse_test
+
+    return test_losses, train_losses
 
 
-    # task 2: Dual representation
-    # M = [10, 200, 800]
-    # kernels = list()
-    # for m in M:
-    #     V = __create_feature_vectors(m, d)
-    #     kernels.append(__calculate_kernel(X=X, X_prime=V))
+def __task_2(lam, N, d, X, y, X_t, y_t):
+    # lam = 1e-1
+
+    # 2.4
+    kernel_train = __calculate_kernel(X=X, X_prime=X, d=d)
+    V = __create_feature_vectors_k(200, 5)
+    kernel_test = __calculate_kernel(X=X_t, X_prime=V, d=d)
+    alpha = __calculate_alpha_dual_problem(kernel_train, lam, y)
+    mse_train, mse_test = __perform_linear_regression_kernel(N, lam, alpha, kernel_train, kernel_test, y, y_t)
+
+    print("MSE for training: " + str(mse_train))
+    print("MSE for test: " + str(mse_test))
+
+    # 2.5
+    kernels = []
+    thetas = []
+    MAEs = []
+
+    for m in [10, 200, 800]:
+        print(f'Number of features = {m}:')
+        V = __create_feature_vectors_k(m, 5)
+        kernel = __calculate_kernel(X=V, X_prime=X, d=d)
+        kernels.append(kernel)
+        theta = __calculate_theta(V, X)
+        theta_representation = theta @ theta.T
+        thetas.append(theta_representation)
+        mae = np.mean(np.abs(kernel[9] - theta_representation[9]))
+        MAEs.append(mae)
+        print(f'Comparison of MAE between K and theta * theta.T = {mae}')
+
+        # Compare train/test error between primal and dual solution
+        mse_train_dual, mse_test_dual = __perform_linear_regression_kernel(N, lam, alpha, kernel_train, kernel_test, y, y_t)
+
+        theta_t = __calculate_theta(V, X_t)
+        I = np.diag(np.ones(V.shape[0]))
+        A = lam * I + theta.T @ theta
+        Q, R = np.linalg.qr(A)
+        z = Q.T @ theta.T @ y
+        w_ml = np.linalg.solve(R, z)
+        mse_train_primal, mse_test_primal = __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t)
+
+        print(f'train_primal = {mse_train_primal}; train_dual = {mse_train_dual}; train_diff = {np.abs(mse_train_dual - mse_train_primal)}')
+        print(f'test_primal = {mse_test_primal}; test_dual = {mse_test_dual}; test_diff = {np.abs(mse_test_dual - mse_test_primal)}')
+
+        print('----------------------------------------------')
+
+    return kernels, thetas, MAEs
 
 
-    """ End of your code
-    """
-
-    features = range(61)
-    train_mean = np.mean(train_losses, axis=2)
-    test_mean = np.mean(test_losses, axis=2)
-    train_std = np.std(train_losses, axis=2)
-    test_std = np.std(test_losses, axis=2)
-    # train_mean_k = np.mean(train_losses_k, axis=2)
-    # test_mean_k = np.mean(test_losses_k, axis=2)
-    for lam_idx, a in enumerate(ax1.reshape(-1)):
-        a.plot(features, train_mean[lam_idx, :], label='train')
-        a.fill_between(features, train_mean[lam_idx, :] - train_std[lam_idx, :], train_mean[lam_idx, :] + train_std[lam_idx, :], alpha=0.5)
-
-        a.plot(features, test_mean[lam_idx, :], label='test')
-        a.fill_between(features, test_mean[lam_idx, :] - test_std[lam_idx, :], test_mean[lam_idx, :] + test_std[lam_idx, :], alpha=0.5)
-
-        # a.plot(features, train_mean_k[lam_idx, :], label='train_k')
-        # a.plot(features, test_mean_k[lam_idx, :], label='test_k')
-        # a.plot(features, train_losses_k[lam_idx], label='train_k')
-        # a.plot(features, test_losses_k[lam_idx], label='test_k')
-        a.legend()
-        a.set_title(r'$\lambda=$' + str(lams[lam_idx]))
-
-    for m_idx, a in enumerate(ax2.reshape(-1)):
-        a.legend()
-        a.set_title('#Features M=%i, MAE=%f' % (m_array[m_idx], (mae_array[m_idx])))
-        # a.plot(range(len(kernels[m_idx][9, :])), kernels[m_idx][9, :])
-
-    return fig1, fig2
-
-def __calculate_kernel(X, X_prime):
-    theta =  1 / cos( X @ X_prime.T ) # / np.linalg.norm(X, ord=2)  * np.linalg.norm(X_prime, ord=2)
-    kernel = 1/(2*np.pi) * sin(theta) + (np.pi - theta) * cos(theta)
+def __calculate_kernel(X, X_prime, d):
+    # theta = 1 / cos(X @ X_prime.T / np.linalg.norm(X, axis=1) * np.linalg.norm(X_prime, axis=1))
+    theta = 1 / cos(X @ X_prime.T)  # data is already on unit sphere, hence norm can be omitted in code
+    kernel = 1 / (2 * np.pi * d) * sin(theta) + (np.pi - theta) * cos(theta)
     #kernel = 1/(2*np.pi) * np.linalg.norm(X_prime, ord=2) * sin(theta) + (np.pi - theta) * cos(theta)
     return kernel
 
-def __calculate_alpha(kernel, lambda_, y_train):
+def __calculate_alpha_dual_problem(kernel, lambda_, y_train):
     I = np.diag(np.ones(y_train.shape[0]))
-    alpha = -(kernel + I * lambda_) @ (lambda_ * y_train)
+    alpha = -np.linalg.inv((kernel + I * lambda_)) @ (lambda_ * y_train)
     return alpha
 
-def __calculate_theta(V, X):
-    # theta = np.zeros((X.shape[0], V.shape[0], X.shape[1])) #  N x M x d -> example: 200 x 11 x 5  -> 200 x 11 x 1
-    # for r in range(X.shape[1]):
-    #     v = V[:, r].reshape(V.shape[0], 1)
-    #     x = X[:, r].reshape(X.shape[0], 1)
-    #     theta[:, :, r] = (x @ v.T) 
 
-    # return  1 / np.sqrt(V.shape[0]) * (np.maximum(np.amax(theta, axis=2), 0)) # loog for max in each dimension d = 5
-    return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0)) # loog for max in each dimension d = 5
+def __calculate_alpha_representer(kernel, lambda_, y_train):
+    I = np.diag(np.ones(y_train.shape[0]))
+    alpha = np.linalg.inv(kernel + I * lambda_) @ y_train
+    return alpha
+
+
+def __calculate_theta(V, X):
+    return 1 / np.sqrt(V.shape[0]) * (np.maximum(X @ V.T, 0))
 
 
 def __perform_linear_regression_kernel(N, lambda_, alpha, kernel1, kernel2, y, y_t):
@@ -172,6 +222,7 @@ def __perform_linear_regression_kernel(N, lambda_, alpha, kernel1, kernel2, y, y
     mse_test = 1 / y_hat_test.shape[0] * np.sum((y_t - y_hat_test) ** 2)  # equation (4)
 
     return mse_train, mse_test
+
 
 def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
     y_hat_train = theta @ w_ml
@@ -183,27 +234,29 @@ def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
 
 
 def __create_feature_vectors_k(N, M):
-    data_points = np.random.normal(size=(N, M)) #np.random.rand <- uniform
-    return data_points# / np.linalg.norm(data_points, axis=1).reshape((N, 1))
+    data_points = np.random.normal(size=(N, M))
+    return data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1))
+
 
 def __create_feature_vectors(k, d):
     N = 10 * k + 1
-    data_points = np.random.normal(size=(N, d)) #np.random.rand <- uniform
+    data_points = np.random.normal(size=(N, d))
     return data_points / np.linalg.norm(data_points, axis=1).reshape((N, 1))
 
 
 def __create_data(N, d, sigma):
-    X = np.random.uniform(size=(N, d)) 
+    X = np.random.normal(size=(N, d))
     X = X / np.linalg.norm(X, axis=1).reshape((N, 1))
-    y = 1 / ((1 / 4 + (X @ np.ones(d)) ** 2)) + np.random.normal(np.zeros((N)), sigma ** 2)
+    y = 1 / (1 / 4 + (X @ np.ones(d)) ** 2) + np.random.normal(np.zeros(N), sigma ** 2)
 
     return X, y
 
 
 if __name__ == '__main__':
     pdf = PdfPages('figures.pdf')
-    f1, f2 = task12()
+    f1, f1b, f2 = task12()
 
     pdf.savefig(f1)
+    pdf.savefig(f1b)
     pdf.savefig(f2)
     pdf.close()
