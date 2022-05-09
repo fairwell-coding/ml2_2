@@ -64,9 +64,18 @@ def task12():
 
     train_losses = np.zeros((3, 61, 5))
     test_losses = np.zeros((3, 61, 5))
-    # train_losses_k = np.zeros((3, 61, 5))
-    # test_losses_k = np.zeros((3, 61, 5))
-    #kernel_train = __calculate_kernel(X=X, X_prime=X)
+    train_losses_k = np.zeros((3, 1))
+    test_losses_k = np.zeros((3, 1))
+    V = __create_feature_vectors_k(200, 5)
+    kernel_train = __calculate_kernel(X=X, X_prime=X)
+    V = __create_feature_vectors_k(200, 5)
+    kernel_test = __calculate_kernel(X=X_t, X_prime=V)
+    alpha = __calculate_alpha(kernel_train, lams[2], y)
+
+    mse_train, mse_test = __perform_linear_regression_kernel(N, lams[2], alpha, kernel_train, kernel_test, y, y_t)
+
+    print("MSE for training: " + str(mse_train))
+    print("MSE for test: " + str(mse_test))
 
     for l in range(3):  # loop over lambdas
         print(str.format("Calculating lambda {0}", lams[l]))
@@ -135,8 +144,9 @@ def task12():
     return fig1, fig2
 
 def __calculate_kernel(X, X_prime):
-    theta =  1 / cos( X_prime.T @ X / np.linalg.norm(X, ord=2)  * np.linalg.norm(X_prime, ord=2) )
-    kernel = 1/(2*np.pi) * np.linalg.norm(X_prime, ord=2) * sin(theta) + (np.pi - theta) * cos(theta)
+    theta =  1 / cos( X @ X_prime.T ) # / np.linalg.norm(X, ord=2)  * np.linalg.norm(X_prime, ord=2)
+    kernel = 1/(2*np.pi) * sin(theta) + (np.pi - theta) * cos(theta)
+    #kernel = 1/(2*np.pi) * np.linalg.norm(X_prime, ord=2) * sin(theta) + (np.pi - theta) * cos(theta)
     return kernel
 
 def __calculate_alpha(kernel, lambda_, y_train):
@@ -171,6 +181,11 @@ def __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t):
 
     return mse_train, mse_test
 
+
+def __create_feature_vectors_k(N, M):
+    data_points = np.random.normal(size=(N, M)) #np.random.rand <- uniform
+    return data_points# / np.linalg.norm(data_points, axis=1).reshape((N, 1))
+
 def __create_feature_vectors(k, d):
     N = 10 * k + 1
     data_points = np.random.normal(size=(N, d)) #np.random.rand <- uniform
@@ -178,7 +193,7 @@ def __create_feature_vectors(k, d):
 
 
 def __create_data(N, d, sigma):
-    X = np.random.normal(size=(N, d)) 
+    X = np.random.uniform(size=(N, d)) 
     X = X / np.linalg.norm(X, axis=1).reshape((N, 1))
     y = 1 / ((1 / 4 + (X @ np.ones(d)) ** 2)) + np.random.normal(np.zeros((N)), sigma ** 2)
 
