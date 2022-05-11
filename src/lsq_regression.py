@@ -65,23 +65,23 @@ def task12():
     X_t, y_t = __create_data(50, d, sigma)
 
     # test_losses, train_losses = __task_1(lams, N, d, X, y, X_t, y_t)
-    dual_kernel_train, primal_kernels_train, MAEs = __task_2(lams[0], N, d, X, y, X_t, y_t)
+    dual_kernels_train, primal_kernels_train, MAEs = __task_2(lams[0], N, d, X, y, X_t, y_t)
 
     """ End of your code
     """
 
     # __plot_task_1(ax1, ax1b, lams, train_losses, test_losses)
-    __plot_task_2(ax2, m_array, dual_kernel_train, primal_kernels_train, MAEs)
+    __plot_task_2(ax2, m_array, dual_kernels_train, primal_kernels_train, MAEs)
 
     return fig1, fig1b, fig2
 
 
-def __plot_task_2(ax2, m_array, dual_kernel_train, primal_kernels_train, MAEs):
+def __plot_task_2(ax2, m_array, dual_kernels_train, primal_kernels_train, MAEs):
     for m_idx, a in enumerate(ax2.reshape(-1)):
         a.legend()
         a.set_title('#Features M=%i, MAE=%f' % (m_array[m_idx], (MAEs[m_idx])))
-        x_axis = range(len(dual_kernel_train[9, :]))
-        a.plot(x_axis, dual_kernel_train[9, :])
+        x_axis = range(len(dual_kernels_train[m_idx][9, :]))
+        a.plot(x_axis, dual_kernels_train[m_idx][9, :])
         a.plot(x_axis, primal_kernels_train[m_idx][9, :])
 
 
@@ -151,45 +151,48 @@ def __task_1(lams, N, d, X, y, X_t, y_t):
 
 def __task_2(lam, N, d, X, y, X_t, y_t):
     # 2.4
-    dual_kernel_train = __calculate_kernel(X=X, X_prime=X, d=d)
-    dual_kernel_test = __calculate_kernel(X=X_t, X_prime=X, d=d)
-    alpha = __calculate_alpha_dual_problem(dual_kernel_train, lam, y)
-    mse_train, mse_test = __perform_linear_regression_kernel(N, lam, alpha, dual_kernel_train, dual_kernel_test, y, y_t)
+    base_kernel_train = __calculate_kernel(X=X, X_prime=X, d=d)
+    base_kernel_test = __calculate_kernel(X=X_t, X_prime=X, d=d)
+    alpha = __calculate_alpha_dual_problem(base_kernel_train, lam, y)
+    mse_train, mse_test = __perform_linear_regression_kernel(N, lam, alpha, base_kernel_train, base_kernel_test, y, y_t)
 
-    print("MSE for training: " + str(mse_train))
-    print("MSE for test: " + str(mse_test))
+    print(f"MSE for training: {np.around(mse_train, 2)}")
+    print(f"MSE for test: {np.around(mse_test, 2)}")
 
     # 2.5
     primal_kernels_train = []
+    dual_kernels_train = []
     MAEs = []
 
     # Calculate train and test errors for dual solution
-    mse_train_dual, mse_test_dual = __perform_linear_regression_kernel(N, lam, alpha, dual_kernel_train, dual_kernel_test, y, y_t)
+    mse_train_dual, mse_test_dual = __perform_linear_regression_kernel(N, lam, alpha, base_kernel_train, base_kernel_test, y, y_t)
 
     for m in [10, 200, 800]:
         print(f'Number of features = {m}:')
 
-        # primal solution
-        V = __create_feature_vectors_k(m, 5)
+        # Create both kernels
+        V = __create_feature_vectors_k(m, d)
+        dual_kernel_train = __calculate_kernel(X=V, X_prime=X, d=d)
+        dual_kernels_train.append(dual_kernel_train)
         theta_train = __calculate_theta(V, X)
         primal_kernel_train = theta_train @ theta_train.T
         primal_kernels_train.append(primal_kernel_train)
         mae = np.mean(np.abs(dual_kernel_train[9] - primal_kernel_train[9]))
         MAEs.append(mae)
-        print(f'Comparison of MAE between K and theta * theta.T = {mae}')
+        print(f'Comparison of MAE between K and theta * theta.T = {np.around(mae, 2)}')
 
         theta_test = __calculate_theta(V, X_t)
 
-        # Calculate train and test error for primal solution
-        I = np.diag(np.ones(V.shape[0]))
-        mse_train_primal = __calculate_primal_error(I, lam, theta_train, y)
-        mse_test_primal = __calculate_primal_error(I, lam, theta_test, y_t)
+        # # Calculate train and test error for primal solution
+        # I = np.diag(np.ones(V.shape[0]))
+        # mse_train_primal = __calculate_primal_error(I, lam, theta_train, y)
+        # mse_test_primal = __calculate_primal_error(I, lam, theta_test, y_t)
+        #
+        # print(f'train primal = {np.around(mse_train_primal, 2)}; train dual = {np.around(mse_train_dual, 2)}; train diff = {np.around(np.abs(mse_train_dual - mse_train_primal), 2)}')
+        # print(f'test primal = {np.around(mse_test_primal, 2)}; test dual = {np.around(mse_test_dual, 2)}; test diff = {np.around(np.abs(mse_test_dual - mse_test_primal), 2)}')
+        # print('----------------------------------------------')
 
-        print(f'train_primal = {mse_train_primal}; train_dual = {mse_train_dual}; train_diff = {np.abs(mse_train_dual - mse_train_primal)}')
-        print(f'test_primal = {mse_test_primal}; test_dual = {mse_test_dual}; test_diff = {np.abs(mse_test_dual - mse_test_primal)}')
-        print('----------------------------------------------')
-
-    return dual_kernel_train, primal_kernels_train, MAEs
+    return dual_kernels_train, primal_kernels_train, MAEs
 
 
 def __calculate_primal_error(I, lam, theta, y):
@@ -206,7 +209,7 @@ def __calculate_primal_error(I, lam, theta, y):
 def __calculate_kernel(X, X_prime, d):
     # theta = 1 / cos(X @ X_prime.T / np.linalg.norm(X, axis=1) * np.linalg.norm(X_prime, axis=1))
     theta = 1 / cos(X @ X_prime.T)  # data is already on unit sphere, hence norm can be omitted in code
-    kernel = 1 / (2 * np.pi * d) * sin(theta) + (np.pi - theta) * cos(theta)
+    kernel = 1 / (2 * np.pi * d) * (sin(theta) + (np.pi - theta) * cos(theta))
     #kernel = 1/(2*np.pi) * np.linalg.norm(X_prime, ord=2) * sin(theta) + (np.pi - theta) * cos(theta)
     return kernel
 
