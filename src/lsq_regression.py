@@ -64,12 +64,28 @@ def task12():
     # 1.4: Create test data
     X_t, y_t = __create_data(50, d, sigma)
 
-    test_losses, train_losses = __task_1(lams, N, d, X, y, X_t, y_t)
-    kernels, thetas, MAEs = __task_2(lams[0], N, d, X, y, X_t, y_t)
+    # test_losses, train_losses = __task_1(lams, N, d, X, y, X_t, y_t)
+    dual_kernel_train, primal_kernels_train, MAEs = __task_2(lams[0], N, d, X, y, X_t, y_t)
 
     """ End of your code
     """
 
+    # __plot_task_1(ax1, ax1b, lams, train_losses, test_losses)
+    __plot_task_2(ax2, m_array, dual_kernel_train, primal_kernels_train, MAEs)
+
+    return fig1, fig1b, fig2
+
+
+def __plot_task_2(ax2, m_array, dual_kernel_train, primal_kernels_train, MAEs):
+    for m_idx, a in enumerate(ax2.reshape(-1)):
+        a.legend()
+        a.set_title('#Features M=%i, MAE=%f' % (m_array[m_idx], (MAEs[m_idx])))
+        x_axis = range(len(dual_kernel_train[9, :]))
+        a.plot(x_axis, dual_kernel_train[9, :])
+        a.plot(x_axis, primal_kernels_train[m_idx][9, :])
+
+
+def __plot_task_1(ax1, ax1b, lams, train_losses, test_losses):
     features = []
     [features.append(10 * k + 1) for k in range(61)]
 
@@ -99,16 +115,6 @@ def task12():
 
         a.legend()
         a.set_title(r'$\lambda=$' + str(lams[lam_idx]))
-
-    # task 2
-    for m_idx, a in enumerate(ax2.reshape(-1)):
-        a.legend()
-        a.set_title('#Features M=%i, MAE=%f' % (m_array[m_idx], (MAEs[m_idx])))
-        x_axis = range(len(kernels[m_idx][9, :]))
-        a.plot(x_axis, kernels[m_idx][9, :])
-        a.plot(x_axis, thetas[m_idx][9, :])
-
-    return fig1, fig1b, fig2
 
 
 def __task_1(lams, N, d, X, y, X_t, y_t):
@@ -144,52 +150,58 @@ def __task_1(lams, N, d, X, y, X_t, y_t):
 
 
 def __task_2(lam, N, d, X, y, X_t, y_t):
-    # lam = 1e-1
-
     # 2.4
-    kernel_train = __calculate_kernel(X=X, X_prime=X, d=d)
-    V = __create_feature_vectors_k(200, 5)
-    kernel_test = __calculate_kernel(X=X_t, X_prime=V, d=d)
-    alpha = __calculate_alpha_dual_problem(kernel_train, lam, y)
-    mse_train, mse_test = __perform_linear_regression_kernel(N, lam, alpha, kernel_train, kernel_test, y, y_t)
+    dual_kernel_train = __calculate_kernel(X=X, X_prime=X, d=d)
+    dual_kernel_test = __calculate_kernel(X=X_t, X_prime=X, d=d)
+    alpha = __calculate_alpha_dual_problem(dual_kernel_train, lam, y)
+    mse_train, mse_test = __perform_linear_regression_kernel(N, lam, alpha, dual_kernel_train, dual_kernel_test, y, y_t)
 
     print("MSE for training: " + str(mse_train))
     print("MSE for test: " + str(mse_test))
 
     # 2.5
-    kernels = []
-    thetas = []
+    primal_kernels_train = []
     MAEs = []
+
+    # Calculate train and test errors for dual solution
+    mse_train_dual, mse_test_dual = __perform_linear_regression_kernel(N, lam, alpha, dual_kernel_train, dual_kernel_test, y, y_t)
 
     for m in [10, 200, 800]:
         print(f'Number of features = {m}:')
+
+        # primal solution
         V = __create_feature_vectors_k(m, 5)
-        kernel = __calculate_kernel(X=V, X_prime=X, d=d)
-        kernels.append(kernel)
-        theta = __calculate_theta(V, X)
-        theta_representation = theta @ theta.T
-        thetas.append(theta_representation)
-        mae = np.mean(np.abs(kernel[9] - theta_representation[9]))
+        theta_train = __calculate_theta(V, X)
+        primal_kernel_train = theta_train @ theta_train.T
+        primal_kernels_train.append(primal_kernel_train)
+        mae = np.mean(np.abs(dual_kernel_train[9] - primal_kernel_train[9]))
         MAEs.append(mae)
         print(f'Comparison of MAE between K and theta * theta.T = {mae}')
 
-        # Compare train/test error between primal and dual solution
-        mse_train_dual, mse_test_dual = __perform_linear_regression_kernel(N, lam, alpha, kernel_train, kernel_test, y, y_t)
+        theta_test = __calculate_theta(V, X_t)
+        primal_kernel_test = theta_test @ theta_test.T
 
-        theta_t = __calculate_theta(V, X_t)
+        # Calculate train and test error for primal solution
         I = np.diag(np.ones(V.shape[0]))
-        A = lam * I + theta.T @ theta
-        Q, R = np.linalg.qr(A)
-        z = Q.T @ theta.T @ y
-        w_ml = np.linalg.solve(R, z)
-        mse_train_primal, mse_test_primal = __perform_linear_regression(N, theta, theta_t, w_ml, y, y_t)
+        mse_train_primal = __calculate_primal_error(I, lam, theta_train, y)
+        mse_test_primal = __calculate_primal_error(I, lam, theta_test, y_t)
 
         print(f'train_primal = {mse_train_primal}; train_dual = {mse_train_dual}; train_diff = {np.abs(mse_train_dual - mse_train_primal)}')
         print(f'test_primal = {mse_test_primal}; test_dual = {mse_test_dual}; test_diff = {np.abs(mse_test_dual - mse_test_primal)}')
-
         print('----------------------------------------------')
 
-    return kernels, thetas, MAEs
+    return dual_kernel_train, primal_kernels_train, MAEs
+
+
+def __calculate_primal_error(I, lam, theta, y):
+    A = lam * I + theta.T @ theta
+    Q, R = np.linalg.qr(A)
+    z = Q.T @ theta.T @ y
+    w_ml = np.linalg.solve(R, z)
+    y_hat = theta @ w_ml
+    mse = 1 / y_hat.shape[0] * np.sum((y - y_hat) ** 2)  # equation (4)
+
+    return mse
 
 
 def __calculate_kernel(X, X_prime, d):
