@@ -179,7 +179,6 @@ def __task_2(lam, N, d, X, y, X_t, y_t):
         print(f'Comparison of MAE between K and theta * theta.T = {mae}')
 
         theta_test = __calculate_theta(V, X_t)
-        primal_kernel_test = theta_test @ theta_test.T
 
         # Calculate train and test error for primal solution
         I = np.diag(np.ones(V.shape[0]))
